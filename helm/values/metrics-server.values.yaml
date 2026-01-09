@@ -1,0 +1,10 @@
+metrics:
+  enabled: true
+
+args:
+  - --kubelet-insecure-tls
+  - --kubelet-preferred-address-types=InternalIP,Hostname
+  - --metric-resolution=30s
+
+# If your cluster has custom CA bundles or proxies, you can also set:
+# extraVolumeMounts/extraVolumes for CA files, but usually not needed for Talos.

@@ -1,0 +1,15 @@
+server:
+  ## Prometheus server container name
+  name: prometheus-home
+  ingress:
+    ## If true, Prometheus server Ingress will be created
+    ##
+    enabled: true
+    ingressClassName: "nginx-internal"
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    hosts:
+      - prometheus.home
+
+    path: /
+    pathType: Prefix

@@ -1,0 +1,62 @@
+# Homelab / Kubernetes .gitignore
+# Keep Talos machine configs, kubeconfigs, credentials, and secrets out of the repo.
+
+# --- Talos ---
+talos/
+components/
+
+# --- Kubeconfig anywhere (admin access) ---
+**/kubeconfig
+**/*.kubeconfig
+
+# --- Kubernetes Secrets (by filename convention) ---
+**/*secret*.yaml
+**/*secrets*.yaml
+
+# --- Helm values that might contain secrets (by convention) ---
+helm/values/*-secrets*.yaml
+helm/values/*secrets*.yaml
+helm/values/*local*.yaml
+
+# --- Environment files / local overrides ---
+.env
+.env.*
+*.env
+*.env.*
+
+# --- Private keys and credentials ---
+**/*.key
+**/*.p12
+**/*.pfx
+**/*id_rsa
+**/*id_dsa
+**/*id_ecdsa
+**/*id_ed25519
+**/*.agekey
+**/*.asc
+
+# (Intentionally not ignoring *.pem / *.crt to avoid blocking public certificates if needed)
+
+# --- Editor/OS junk ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- Local outputs / temp files ---
+*.tmp
+*.bak
+tmp/
+dist/
+manifests/
+*.rendered.yaml
+*.generated.yaml
+*.compiled.yaml
+
+# --- Helm artifacts ---
+*.tgz
+
+# --- Others ---
+AGENTS.md

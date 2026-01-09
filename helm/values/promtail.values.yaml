@@ -1,0 +1,139 @@
+# Add Promtail values aligned to chart schema using Loki service URL and CRI pipeline
+
+# Deploy as DaemonSet (recommended for node-wide log collection)
+daemonset:
+  enabled: true
+
+# Disable Deployment mode
+deployment:
+  enabled: false
+
+# Promtail image (defaults are fine)
+image:
+  registry: docker.io
+  repository: grafana/promtail
+  tag: "" # use chart appVersion
+
+# Ensure Promtail runs on control-plane nodes too (Talos)
+tolerations:
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+# Use containerd paths instead of Docker
+defaultVolumes:
+  - name: run
+    hostPath:
+      path: /run/promtail
+  - name: containers
+    hostPath:
+      path: /var/log/containers
+  - name: pods
+    hostPath:
+      path: /var/log/pods
+
+defaultVolumeMounts:
+  - name: run
+    mountPath: /run/promtail
+  - name: containers
+    mountPath: /var/log/containers
+    readOnly: true
+  - name: pods
+    mountPath: /var/log/pods
+    readOnly: true
+
+# Optional resources
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# RBAC and ServiceAccount
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+
+# Promtail configuration aligned with chart schema
+config:
+  enabled: true
+  logLevel: info
+  logFormat: logfmt
+  serverPort: 3101
+
+  # Send logs to Loki single-binary service inside the cluster
+  clients:
+    - url: http://loki.grafana-system.svc:3100/loki/api/v1/push
+
+  # Track file positions across restarts
+  positions:
+    filename: /run/promtail/positions.yaml
+
+  # Reusable snippets referenced in scrapeConfigs
+  snippets:
+    # Use CRI stage for containerd
+    pipelineStages:
+      - cri: {}
+
+    # Common relabels/labels
+    common:
+      - action: replace
+        source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: node_name
+      - action: replace
+        source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - action: replace
+        source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - action: replace
+        source_labels: [__meta_kubernetes_pod_container_name]
+        target_label: container
+      # Attach file path for container logs on node
+      - action: replace
+        replacement: /var/log/pods/*$1/*.log
+        separator: /
+        source_labels:
+          - __meta_kubernetes_pod_uid
+          - __meta_kubernetes_pod_container_name
+        target_label: __path__
+      # Handle config hash log file paths
+      - action: replace
+        replacement: /var/log/pods/*$1/*.log
+        regex: true/(.*)
+        separator: /
+        source_labels:
+          - __meta_kubernetes_pod_annotationpresent_kubernetes_io_config_hash
+          - __meta_kubernetes_pod_annotation_kubernetes_io_config_hash
+          - __meta_kubernetes_pod_container_name
+        target_label: __path__
+
+    # Set to true to add the job label for debugging
+    addScrapeJobLabel: false
+
+    # Additional scrape configs you can append later if needed
+    extraScrapeConfigs: ""
+
+    # Main scrape config for Kubernetes pods
+    scrapeConfigs: |
+      - job_name: kubernetes-pods
+        pipeline_stages:
+          {{- toYaml .Values.config.snippets.pipelineStages | nindent 4 }}
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          {{- toYaml .Values.config.snippets.common | nindent 10 }}
+
+# Enable ServiceMonitor for Prometheus Operator (optional)
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
