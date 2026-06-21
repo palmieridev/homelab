@@ -22,7 +22,7 @@ See docs/ for supporting guides:
 
 ## Repository layout
 
-- base/          → Kustomize bases for cluster-scoped and namespace-scoped resources (e.g., MetalLB, Homepage)
+- base/          → Kustomize bases for cluster-scoped and namespace-scoped resources (e.g., MetalLB, Homepage, Jellyfin)
 - helm/          → Helmfile + per-chart values for core components
 - components/    → Reserved for additional apps/addons (not all are committed)
 - talos/         → Talos machine configs, kubeconfig, and patches (sensitive; see Safe to commit section)
@@ -146,16 +146,24 @@ High-level steps:
   kubectl apply -k base/homepage
   ```
 
-5) Validate DNS, ingress, and LB
+5) Jellyfin (optional)
+- Deploy the Jellyfin base:
+  ```sh
+  kubectl apply -k base/jellyfin
+  ```
+- This base pins Jellyfin to the Talos control-plane node because that is the node currently exposing `/var/mnt/longhorn` to kubelet for media storage.
+- Media is backed by a static local PV on `/var/mnt/longhorn/media` and the same base also deploys an SMB share named `media` on a MetalLB-assigned LAN IP for direct file copies from your PC.
+
+6) Validate DNS, ingress, and LB
 - Confirm MetalLB assigned an IP to the ingress controller Service.
 - Confirm ExternalDNS created A records in Pi-hole (e.g., grafana.home).
 - Access apps via your LAN DNS.
 
-6) Observability
+7) Observability
 - Promtail should be pushing to Loki; Grafana should have Loki and Prometheus as datasources.
 - Refer to docs/logging-architecture.md for details and queries.
 
-7) Plan ingress migration
+8) Plan ingress migration
 - Install the new ingress controller with a different `ingressClassName`.
 - Migrate canaries; then flip production `Ingress` resources.
 

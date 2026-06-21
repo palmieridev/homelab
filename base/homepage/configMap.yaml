@@ -77,6 +77,10 @@ data:
             href: http://grafana.home
             description: Storage dashboard
             icon: grafana.png
+        - Jellyfin:
+            href: http://jellyfin.home
+            description: Media server
+            icon: jellyfin.svg
   widgets.yaml: |
     - datetime:
         format:

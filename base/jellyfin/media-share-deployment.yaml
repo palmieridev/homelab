@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-share
+  namespace: jellyfin
+  labels:
+    app.kubernetes.io/name: media-share
+    app.kubernetes.io/component: samba
+    app.kubernetes.io/part-of: homelab
+spec:
+  revisionHistoryLimit: 3
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: media-share
+      app.kubernetes.io/part-of: homelab
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: media-share
+        app.kubernetes.io/component: samba
+        app.kubernetes.io/part-of: homelab
+    spec:
+      # The local media PV is pinned to the Talos control-plane node, so the SMB pod must run there too.
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: samba
+          image: dperson/samba:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - -p
+            - -u
+            - $(SMB_USERNAME);$(SMB_PASSWORD)
+            - -s
+            - media;/mount;yes;no;no;$(SMB_USERNAME);$(SMB_USERNAME);;Jellyfin media share
+            - -w
+            - WORKGROUP
+          env:
+            - name: TZ
+              value: Etc/UTC
+            - name: SMB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: media-share-credentials
+                  key: username
+            - name: SMB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: media-share-credentials
+                  key: password
+          ports:
+            - name: netbios-ssn
+              containerPort: 139
+              protocol: TCP
+            - name: smb
+              containerPort: 445
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: smb
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          startupProbe:
+            tcpSocket:
+              port: smb
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: media
+              mountPath: /mount
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: jellyfin-media
