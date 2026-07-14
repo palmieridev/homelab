@@ -1,0 +1,9 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: longhorn-basic-auth
+  annotations:
+    homelab.local/description: Protects the Longhorn UI with the existing htpasswd credentials
+spec:
+  basicAuth:
+    secret: longhorn-basic-auth

@@ -5,9 +5,7 @@ server:
     ## If true, Prometheus server Ingress will be created
     ##
     enabled: true
-    ingressClassName: "nginx-internal"
-    annotations:
-      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    ingressClassName: "traefik"
     hosts:
       - prometheus.home
 

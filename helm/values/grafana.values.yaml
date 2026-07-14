@@ -2,7 +2,7 @@ ingress:
   enabled: true
   hosts:
     - "grafana.home"
-  ingressClassName: nginx-internal
+  ingressClassName: traefik
 
 persistence:
   enabled: true

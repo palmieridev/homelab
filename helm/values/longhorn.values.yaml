@@ -3,15 +3,11 @@ defaultSettings:
 
 ingress:
   enabled: true
-  ingressClassName: nginx-internal
+  ingressClassName: traefik
   host: longhorn.home
   path: /
   pathType: Prefix
   annotations:
-    nginx.ingress.kubernetes.io/auth-type: basic
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    nginx.ingress.kubernetes.io/auth-secret: basic-auth
-    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
-    nginx.ingress.kubernetes.io/proxy-body-size: 10000m
+    traefik.ingress.kubernetes.io/router.middlewares: longhorn-system-longhorn-basic-auth@kubernetescrd
   tls: false
   tlsSecret: ""

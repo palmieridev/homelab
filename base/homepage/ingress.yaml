@@ -12,7 +12,7 @@ metadata:
     gethomepage.dev/icon: homepage.png
     gethomepage.dev/name: Homepage
 spec:
-  ingressClassName: nginx-internal
+  ingressClassName: traefik
   rules:
     - host: "homepage.core"
       http:

@@ -22,4 +22,4 @@ serviceAccount:
   create: true
   name: "external-dns"
 ingressClassFilters:
-  - nginx-internal
+  - traefik

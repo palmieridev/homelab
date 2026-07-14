@@ -79,7 +79,7 @@ monitoring:
 # Simple ingress exposing the query frontend and push endpoints
 ingress:
   enabled: true
-  ingressClassName: nginx-internal
+  ingressClassName: traefik
   hosts:
     - loki.home
   # The chart expects a map of component -> array of paths

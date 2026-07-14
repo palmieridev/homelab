@@ -1,0 +1,107 @@
+# helm/values/traefik.values.yaml
+# Traefik v3.7.5 (chart 41.0.1) - bare-metal Talos homelab
+# MetalLB pool: 192.168.50.201-192.168.50.235
+# Replacing: ingress-nginx-internal @ 192.168.50.201
+
+deployment:
+  replicas: 1
+
+# -------------------------------------------------------
+# IngressClass - replaces nginx-internal as default class
+# -------------------------------------------------------
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
+# -------------------------------------------------------
+# Providers
+# -------------------------------------------------------
+providers:
+  # Enable CRD provider for IngressRoute, Middleware, etc.
+  kubernetesCRD:
+    enabled: true
+
+  # Keep standard Ingress support active during and after transition
+  kubernetesIngress:
+    enabled: true
+    allowExternalNameServices: false
+    publishedService:
+      enabled: true
+
+  # Keep the NGINX compatibility provider off after migration.
+  kubernetesIngressNGINX:
+    enabled: false
+
+  # Gateway API provider (off by default; enable if CRDs installed separately)
+  kubernetesGateway:
+    enabled: false
+
+# The Traefik 41.x chart no longer ships Kubernetes Gateway API CRDs.
+# Keep these disabled unless gateway.networking.k8s.io CRDs are installed first.
+gateway:
+  enabled: false
+
+gatewayClass:
+  enabled: false
+
+# -------------------------------------------------------
+# LoadBalancer service - reuse the same MetalLB IP
+# so DNS records require no changes during cutover
+# -------------------------------------------------------
+service:
+  enabled: true
+  spec:
+    type: LoadBalancer
+    # Pin to the same IP previously held by ingress-nginx-internal.
+    # MetalLB will reassign this address to Traefik automatically.
+    loadBalancerIP: "192.168.50.201"
+  annotations:
+    metallb.universe.tf/address-pool: pool
+
+# -------------------------------------------------------
+# Ports
+# -------------------------------------------------------
+ports:
+  web:
+    expose:
+      default: true
+    exposedPort: 80
+    protocol: TCP
+  websecure:
+    expose:
+      default: true
+    exposedPort: 443
+    protocol: TCP
+    http:
+      tls:
+        enabled: false # set true when you add cert-manager / TLS termination
+
+# -------------------------------------------------------
+# Traefik API / Dashboard
+# Accessible internally at http://traefik.home/dashboard/
+# after you create an Ingress or IngressRoute for it.
+# -------------------------------------------------------
+api:
+  dashboard: true
+  insecure: false   # do not expose dashboard on :8080 without auth
+
+# -------------------------------------------------------
+# Logging
+# -------------------------------------------------------
+log:
+  level: INFO
+
+accessLog:
+  enabled: true
+
+# -------------------------------------------------------
+# Resources
+# -------------------------------------------------------
+resources:
+  requests:
+    cpu: "50m"
+    memory: "64Mi"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
