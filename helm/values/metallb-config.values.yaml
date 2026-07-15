@@ -1,0 +1,11 @@
+addressPool:
+  name: pool
+  addresses:
+    - 192.168.50.201-192.168.50.235
+  autoAssign: true
+  avoidBuggyIPs: false
+
+l2Advertisement:
+  name: pool
+  ipAddressPools:
+    - pool

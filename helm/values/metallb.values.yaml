@@ -1,3 +1,26 @@
+prometheus:
+  scrapeAnnotations: true
+
+controller:
+  resources:
+    requests:
+      cpu: 20m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
 speaker:
+  enabled: true
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
   frr:
     enabled: false
+
+crds:
+  enabled: true

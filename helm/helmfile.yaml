@@ -3,6 +3,8 @@ repositories:
     url: https://charts.longhorn.io
   - name: mojo2600
     url: https://mojo2600.github.io/pihole-kubernetes/
+  - name: metallb
+    url: https://metallb.github.io/metallb
   - name: traefik
     url: https://traefik.github.io/charts
   - name: bitnami
@@ -26,6 +28,23 @@ releases:
     version: 1.10.0
     values:
       - ./values/longhorn.values.yaml
+
+  # Bare-metal LoadBalancer controller and CRDs
+  - name: metallb
+    namespace: metallb-system
+    chart: metallb/metallb
+    version: 0.15.2
+    values:
+      - ./values/metallb.values.yaml
+
+  # Cluster-specific address pool and Layer 2 advertisement
+  - name: metallb-config
+    namespace: metallb-system
+    chart: ./charts/metallb-config
+    needs:
+      - metallb-system/metallb
+    values:
+      - ./values/metallb-config.values.yaml
 
   # pihole
   - name: pihole

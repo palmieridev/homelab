@@ -1,0 +1,7 @@
+apiVersion: v2
+name: metallb-config
+description: MetalLB address pool and Layer 2 advertisement for the homelab
+type: application
+version: 0.1.0
+appVersion: "0.15.2"
+kubeVersion: ">=1.19.0-0"
