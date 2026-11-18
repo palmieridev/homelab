@@ -58,6 +58,3 @@ manifests/
 
 # --- Helm artifacts ---
 *.tgz
-
-# --- Others ---
-AGENTS.md
