@@ -7,7 +7,7 @@ Key stack:
 - CNI: Cilium (no kube-proxy)
 - Load balancer: MetalLB
 - DNS: Pi-hole + ExternalDNS
-- Ingress: NGINX Ingress Controller (migration planned; see note below)
+- Ingress: Traefik
 - Storage: Longhorn
 - Observability: Prometheus, Grafana, Loki, Promtail
 - Misc: Metrics Server, Homepage
@@ -22,8 +22,8 @@ See docs/ for supporting guides:
 
 ## Repository layout
 
-- base/          → Kustomize bases for cluster-scoped and namespace-scoped resources (e.g., MetalLB, Homepage, Jellyfin)
-- helm/          → Helmfile + per-chart values for core components
+- base/          → Kustomize bases for applications such as Homepage and Jellyfin
+- helm/          → Helmfile, local charts, and per-chart values for core components
 - components/    → Reserved for additional apps/addons (not all are committed)
 - talos/         → Talos machine configs, kubeconfig, and patches (sensitive; see Safe to commit section)
 - docs/          → Architecture notes and runbooks
@@ -47,7 +47,7 @@ flowchart LR
     end
 
     subgraph Ingress[Ingress]
-      NGINX[Ingress Controller]
+      TRAEFIK[Traefik]
       SVCIngress[Service: LoadBalancer]
     end
 
@@ -65,7 +65,7 @@ flowchart LR
   U -->|HTTPS to A-record| PH
   PH -->|resolves app.home| SVCIngress
   SVCIngress <-->|Allocates LB IP| ML
-  U --> NGINX --> APP1
+  U --> TRAEFIK --> APP1
 
   %% DNS automation
   EDNS[ExternalDNS] -. writes A records .-> PH
@@ -81,7 +81,7 @@ flowchart LR
   APP2 -->|dashboards| APP3
 
   %% Internal fabric
-  CNI --- NGINX
+  CNI --- TRAEFIK
   CNI --- APP1
   CNI --- APP2
   CNI --- APP3
@@ -98,22 +98,16 @@ Notes:
 - Promtail ships logs to Loki; Grafana queries Loki and Prometheus for dashboards.
 
 
-## Important: Ingress controller migration
+## Ingress
 
-The current setup uses NGINX Ingress. Plan to migrate since NGINX is expected to be orphaned soon. Recommended path:
-1. Install an alternative Ingress controller in parallel with a distinct `ingressClassName`. Viable options: Traefik, HAProxy Ingress, or Envoy Gateway.
-2. Update a subset of `Ingress` resources to the new `ingressClassName` and validate routes.
-3. Flip remaining `Ingress` resources to the new class.
-4. Remove the NGINX release after a soak period.
-
-Because MetalLB is assigning the LB IP and ExternalDNS writes A records for hosts, the cutover can be performed with minimal downtime by using either:
-- Two LoadBalancer services and DNS switchover; or
-- One LoadBalancer, then change `ingressClassName` on Ingress objects to point to the new controller if it shares the same Service load balancer.
+Traefik is the only IngressClass and uses MetalLB address `192.168.50.201`.
+ExternalDNS publishes Traefik Ingress hosts to Pi-hole. The completed migration
+procedure and rollback context are retained in `docs/TRAEFIK-MIGRATION.md`.
 
 ## Deployment workflow
 
 Prerequisites:
-- kubectl, helm, helmfile
+- kubectl, helm, helmfile, jq, ripgrep
 - talosctl
 - Cilium installed in kube-proxy–less mode (done out-of-band; see Cilium docs)
 - Optional: SOPS + age, or your alternative secrets manager
@@ -124,15 +118,13 @@ High-level steps:
 - Generate Talos configs and bootstrap the control plane using talosctl or the Talos factory.
 - Retrieve kubeconfig (do not commit it).
 
-2) Install/load networking and load balancer
+2) Install cluster networking
 - Ensure Cilium is installed and kube-proxy is disabled.
-- Apply MetalLB manifests and your IP pool:
-  ```sh
-  kubectl apply -k base/metallb
-  ```
 
-3) Deploy core stack with Helmfile
+3) Deploy the core stack with Helmfile
 - Review `helm/helmfile.yaml` and values in `helm/values/`.
+- MetalLB is deployed as the upstream `metallb` chart plus the local
+  `metallb-config` chart for the address pool and Layer 2 advertisement.
 - Create any required Secrets (e.g., `pihole-password`).
 - Sync releases:
   ```sh
@@ -162,10 +154,6 @@ High-level steps:
 7) Observability
 - Promtail should be pushing to Loki; Grafana should have Loki and Prometheus as datasources.
 - Refer to docs/logging-architecture.md for details and queries.
-
-8) Plan ingress migration
-- Install the new ingress controller with a different `ingressClassName`.
-- Migrate canaries; then flip production `Ingress` resources.
 
 Day-2 operations:
 - Helmfile for chart updates and drift reconciliation.
