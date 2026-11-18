@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-service
+  labels:
+    app.kubernetes.io/part-of: kubernetes-labs
+    pod-security.kubernetes.io/enforce: restricted
+  annotations:
+    homelab/description: Disposable Service troubleshooting exercise

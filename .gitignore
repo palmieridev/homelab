@@ -51,6 +51,7 @@ Thumbs.db
 tmp/
 dist/
 manifests/
+!/base/kubernetes-labs/**/manifests/
 *.rendered.yaml
 *.generated.yaml
 *.compiled.yaml

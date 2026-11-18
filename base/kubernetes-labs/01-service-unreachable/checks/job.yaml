@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: lab-check
+  namespace: lab-service
+  labels:
+    app.kubernetes.io/name: lab-check
+  annotations:
+    homelab/description: Finite connectivity check; Job exit status replaces health probes
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lab-check
+    spec:
+      restartPolicy: Never
+      serviceAccountName: lab
+      automountServiceAccountToken: false
+      enableServiceLinks: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: check
+          image: python:3.13.7-alpine3.22
+          command: [python, -u, -B, -c]
+          args:
+            - |
+              import json, os, time, urllib.request
+              url = "http://" + os.environ["LAB_API_SERVICE_HOST"] + ":80/"
+              for attempt in range(1, 6):
+                  try:
+                      with urllib.request.urlopen(url, timeout=3) as response:
+                          body = json.load(response)
+                          assert response.status == 200 and body == {
+                              "status": "ok", "application": "lab-api"
+                          }, body
+                      print("PASS: Service returned expected HTTP 200 JSON", flush=True)
+                      raise SystemExit(0)
+                  except Exception as error:
+                      print(f"Attempt {attempt}/5: {error}", flush=True)
+                      time.sleep(2)
+              print("FAIL: Service is unreachable or returned an unexpected response")
+              raise SystemExit(1)
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
